@@ -1,6 +1,0 @@
-'{$STAMP BS2}
-'{$PBASIC 2.5}
-
-Main:
-	DEBUG "Hello", CR
-	END
