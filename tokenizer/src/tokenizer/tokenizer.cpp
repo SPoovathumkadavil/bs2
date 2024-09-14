@@ -94,291 +94,8 @@
   #include <ctype.h>
 #endif
 #include <stdlib.h>
-#include "tokenizer/tokenizer_types.hpp"  /* Make sure this is the last include! */
 
-
-#define DevDebug				/*Uncomment this to enable the GetVariableItem, GetSymbolTableItem, GetElementListItem and */
-       						/*GetGosubCount routines.  This is only for development support*/
-
-#define TokenizerVersion  130			/*Version of this tokenizer; xyy means version x.yy*/
-
-/*Define forward declarations*/
-/*---Published Library Functions---*/
-#ifdef __APPLE_CC__
-//NOTE: If we ever get the run-time shared library interface working on the Mac, we should be able to uncomment these commented lines
-//  #pragma export on         /* Export the following functions when compiling on a Macintosh */
-
-  #if defined(__cplusplus)  /* This wraps the following functions in the c namespace so they don't get*/
-    extern "C"              /* changed in the shared library */
-    {
-  #endif
-
-  STDAPI TestRecAlignment(TModuleRec *Rec);
-  STDAPI Version(void);
-  #if defined(DevDebug)
-    STDAPI GetVariableItems(byte *VBitCount, byte *VBases);
-    STDAPI GetSymbolTableItem(TSymbolTable *Sym, int Idx);
-    STDAPI GetUndefSymbolTableItem(TUndefSymbolTable *Sym, int Idx);
-    STDAPI GetElementListItem(TElementList *Ele, int Idx);
-    STDAPI GetGosubCount(void);
-  #endif
-  STDAPI Compile(TModuleRec *Rec, char *Src, bool DirectivesOnly, bool ParseStampDirective, TSrcTokReference *Ref);
-  STDAPI GetReservedWords(TModuleRec *Rec, char *Src);
-
-  #if defined(__cplusplus)  /* End of the c namespace */
-    }
-  #endif
-
-//  #pragma export off        /* End of exported functions when compiling on a Macintosh */
-#endif
-
-/*---Misc---*/
-byte       ResWordTypeID(TElementType ElementType);
-void       InitializeRec(void);
-void       ClearEEPROM(void);
-void       ClearSrcTokReference(void);
-/*---Expression Engine---(Compiles algebraic expressions)*/
-TErrorCode GetReadWrite(bool Write);
-TErrorCode GetValueConditional(bool Conditional, bool PinIsConstant, int SplitExpression);
-TErrorCode GetExpression(bool Conditional, bool PinIsConstant, int SplitExpression, bool CCDirective);
-TErrorCode EnterExpressionConstant(TElementList Element);
-TErrorCode EnterExpressionVariable(TElementList Element, bool Write);
-TErrorCode EnterExpressionOperator(byte Data);
-TErrorCode EnterExpressionBits(byte Bits, word Data);
-TErrorCode PushLeft(void);
-TErrorCode Push(byte Data);
-TErrorCode PopLeft(void);
-TErrorCode PopOperators(TElementList *Element);
-bool       Pop1Operator(TElementList *Element);
-void       CopyExpression(byte SourceNumber, byte DestinationNumber);
-TErrorCode EnterExpression(byte ExpNumber, bool Enter1Before);
-/*---Symbol Engine---(Builds and searches the Symbol Table)-*/
-TErrorCode InitSymbols(void);
-TErrorCode AdjustSymbols(void);
-TErrorCode EnterSymbol(TSymbolTable Symbol);
-TErrorCode EnterUndefSymbol(char *Name);
-bool       FindSymbol(TSymbolTable *Symbol);
-bool       ModifySymbolValue(const char *Name, word Value);
-int        GetSymbolVector(const char *Name);
-int        GetUndefSymbolVector(char *Name);
-int        CalcSymbolHash(const char *SymbolName);
-/*---Element Engine---(Elementizes the source code into the ElementList)-*/
-TErrorCode ElementError(bool IncLength, TErrorCode ErrorID);
-void       SkipToEnd(void);
-TErrorCode GetString(void);
-TErrorCode GetNumber(TBase Base, byte DPDigits, word *Result);
-TErrorCode GetSymbol(void);
-TErrorCode GetFilename(bool Quoted);
-TErrorCode GetDirective(void);
-TErrorCode EnterElement(TElementType ElementType, word Value, bool IsEnd);
-TErrorCode Elementize(bool LastPass);
-bool       GetElement(TElementList *Element);
-bool       PreviewElement(TElementList *Preview);
-void       CancelElements(word Start, word Finish);
-void       VoidElements(word Start, word Finish);
-void       GetSymbolName(int Start, int Length);
-/*---Directive Compilers---(These compile the compile-time items, editor directives and compiler directives)-*/
-TErrorCode CompileEditorDirectives(void);
-TErrorCode CompileStampDirective(void);
-TErrorCode CompilePortDirective(void);
-TErrorCode CompilePBasicDirective(void);
-TErrorCode CompileCCDirectives(void);
-TErrorCode CompileCCIf(void);
-TErrorCode CompileCCElse(void);
-TErrorCode CompileCCEndIf(void);
-TErrorCode CompileCCDefine(void);
-TErrorCode CompileCCError(void);
-TErrorCode CompileCCSelect(void);
-TErrorCode AppendExpression(byte SourceExpression, TOperatorCode AppendOperator);
-TErrorCode CompileCCCase(void);
-TErrorCode CompileCCEndSelect(void);
-TErrorCode CompilePins(bool LastPass);
-TErrorCode CompileConstants(bool LastPass);
-TErrorCode AssignSymbol(bool *SymbolFlag, word *EEPROMIdx);
-TErrorCode EnterData(TElementList *Element, word *EEPROMValue, word *EEPROMIdx, bool WordFlag, bool DefinedFlag, bool LastPass);
-TErrorCode CompileData(bool LastPass);
-TErrorCode GetModifiers(TElementList *Element);
-TErrorCode CompileVar(bool LastPass);
-TErrorCode ResolveConstant(bool LastPass, bool CCDefine, bool *Resolved);
-TErrorCode GetCCDirectiveExpression(int SplitExpression);
-int        GetExpBits(byte Bits, word *BitIdx);
-int        RaiseToPower(int Base, int Exponent);
-int        ResolveCCDirectiveExpression(void);
-/*---Instruction Compilers---(These are the high-level routines that compile actual BASIC Stamp instructions)-*/
-TErrorCode CompileInstructions(void);
-TErrorCode CompileAuxio(void);
-TErrorCode CompileBranch(void);
-TErrorCode CompileButton(void);
-TErrorCode CompileCase(void);
-TErrorCode CompileCount(void);
-TErrorCode CompileDebug(void);
-TErrorCode CompileDebugIn(void);
-TErrorCode CompileDo(void);
-TErrorCode CompileDtmfout(void);
-TErrorCode CompileElse(void);
-TErrorCode CompileEnd(void);
-TErrorCode CompileEndIf(void);
-TErrorCode CompileEndSelect(void);
-TErrorCode CompileExit(void);
-TErrorCode CompileFor(void);
-TErrorCode CompileFreqout(void);
-TErrorCode CompileGet(void);
-TErrorCode CompileGosub(void);
-TErrorCode CompileGoto(void);
-TErrorCode CompileHigh(void);
-TErrorCode CompileI2cin(void);
-TErrorCode CompileI2cout(void);
-TErrorCode CompileIf(bool ElseIf);
-TErrorCode CompileInput(void);
-TErrorCode CompileIoterm(void);
-TErrorCode CompileLcdcmd(void);
-TErrorCode CompileLcdin(void);
-TErrorCode CompileLcdout(void);
-TErrorCode CompileLet(void);
-TErrorCode CompileLookdown(void);
-TErrorCode CompileLookup(void);
-TErrorCode CompileLoop(void);
-TErrorCode CompileLow(void);
-TErrorCode CompileMainio(void);
-TErrorCode CompileNap(void);
-TErrorCode CompileNext(void);
-TErrorCode CompileOn(void);
-TErrorCode CompileOutput(void);
-TErrorCode CompileOwin(void);
-TErrorCode CompileOwout(void);
-TErrorCode CompilePause(void);
-TErrorCode CompilePollin(void);
-TErrorCode CompilePollmode(void);
-TErrorCode CompilePollout(void);
-TErrorCode CompilePollrun(void);
-TErrorCode CompilePollwait(void);
-TErrorCode CompilePulsin(void);
-TErrorCode CompilePulsout(void);
-TErrorCode CompilePut(void);
-TErrorCode CompilePwm(void);
-TErrorCode CompileRandom(void);
-TErrorCode CompileRctime(void);
-TErrorCode CompileRead(void);
-TErrorCode CompileReturn(void);
-TErrorCode CompileReverse(void);
-TErrorCode CompileRun(void);
-TErrorCode CompileSelect(void);
-TErrorCode GetTimeout(void);
-TErrorCode CompileSerin(void);
-TErrorCode CompileSerout(void);
-TErrorCode CompileShiftin(void);
-TErrorCode CompileShiftout(void);
-TErrorCode CompileSleep(void);
-TErrorCode CompileStop(void);
-TErrorCode CompileStore(void);
-TErrorCode CompileToggle(void);
-TErrorCode CompileWrite(void);
-TErrorCode CompileXout(void);
-/*---Compiler Routines---(Supporting routines during the compilation process)-*/
-TErrorCode GetValue(byte ExpNumber, bool PinIsConstant);
-TErrorCode GetRead(byte ExpNumber);
-TErrorCode GetWrite(byte ExpNumber);
-TErrorCode GetValueEnterExpression(bool Enter1Before, bool PinIsConstant);
-TErrorCode GetWriteEnterExpression(void);
-TErrorCode EnterOperator(TOperatorCode Operator);
-TErrorCode GetEnd(bool *Result);
-TErrorCode GetLeft(void);
-TErrorCode GetRight(void);
-TErrorCode GetLeftBracket(void);
-TErrorCode GetRightBracket(void);
-TErrorCode GetEqual(void);
-TErrorCode GetTO(void);
-TErrorCode GetComma(void);
-TErrorCode GetQuestion(void);
-TErrorCode GetBackslash(void);
-TErrorCode CopySymbol(void);
-bool       CheckQuestion(void);
-bool       CheckBackslash(void);
-TErrorCode GetCommaOrBracket(bool *FoundBracket);
-TErrorCode GetCommaOrEnd(bool *EndFound);
-TErrorCode GetByteVariable(TElementList *Element);
-TErrorCode GetUndefinedSymbol(void);
-TErrorCode Enter0Code(TInstructionCode Code);
-TErrorCode EnterChr(char Character);
-TErrorCode EnterText(bool ASCFlag);
-TErrorCode CompileInputSequence(void);
-TErrorCode CompileOutputSequence(void);
-TErrorCode GetAddressEnter(void);
-TErrorCode EnterAddress(word Address);
-TErrorCode EnterConstant(word Constant, bool Enter1Before);
-TErrorCode CountGosubs(void);
-int        Lowest(int Value1, int Value2);
-TErrorCode NestingError(void);
-TErrorCode CCNestingError(void);
-TErrorCode Error(TErrorCode ErrorID);
-bool       InBaseRange(char C, TBase Base);
-/*---Object Engine---(Generates the EEPROM and PacketBuffer data for successful compilations)-*/
-TErrorCode EnterEEPROM(byte Bits, word Data);
-void       EnterSrcTokRef(void);
-TErrorCode PatchAddress(word SourceAddress);
-TErrorCode PatchSkipLabels(bool Exits);
-TErrorCode PatchRemainingAddresses(void);
-void       PreparePackets(void);
-
-
-#ifdef WIN32
-/*------------------------------------------------------------------------------*/
-/*------------------------------------------------------------------------------*/
-/*                 Start of Windows 32-bit DLL Entry Point Code                 */
-/*------------------------------------------------------------------------------*/
-/*------------------------------------------------------------------------------*/
-CComModule _Module;
-
-BEGIN_OBJECT_MAP(ObjectMap)
-END_OBJECT_MAP()
-/* Implementation of DLL Exports.
-   Note: Proxy/Stub Information
-         To build a separate proxy/stub DLL,
-         run nmake -f tokenizerps.mk in the project directory.*/
-
-extern "C"
-BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
-{
-    if (dwReason == DLL_PROCESS_ATTACH)
-    {
-        _Module.Init(ObjectMap, hInstance, &LIBID_TOKENIZERLib);
-        DisableThreadLibraryCalls(hInstance);
-    }
-    else if (dwReason == DLL_PROCESS_DETACH)
-        _Module.Term();
-    return TRUE;    /* ok */
-}
-
-STDAPI DllCanUnloadNow(void)
-{ /* Used to determine whether the DLL can be unloaded by OLE*/
-  return (_Module.GetLockCount()==0) ? S_OK : S_FALSE;
-}
-
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
-{ /* Returns a class factory to create an object of the requested type */
-  return _Module.GetClassObject(rclsid, riid, ppv);
-}
-
-STDAPI DllRegisterServer(void)
-{  /* DllRegisterServer - Adds entries to the system registry */
-   /* registers object, typelib and all interfaces in typelib */
-   return _Module.RegisterServer(TRUE);
-}
-
-STDAPI DllUnregisterServer(void)
-{  /* DllUnregisterServer - Removes entries from the system registry */
-   return _Module.UnregisterServer(TRUE);
-}
-
-#endif /*WIN32*/
-
-/*------------------------------------------------------------------------------*/
-/*------------------------------------------------------------------------------*/
-/*                  End of Windows 32-bit DLL Entry Point Code                  */
-/*------------------------------------------------------------------------------*/
-/*------------------------------------------------------------------------------*/
-
-
+#include "tokenizer/tokenizer.hpp"
 
 /*------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------*/
@@ -386,16 +103,13 @@ STDAPI DllUnregisterServer(void)
 /*------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------*/
 
-//#ifdef __APPLE_CC__
-//  #pragma export on       /* Export the following functions when compiling on a Macintosh */
-//#endif
 
 #if defined(__cplusplus)  /* This wraps the following functions in the c namespace so they don't get*/
 extern "C"                /* changed in the shared library */
 {
 #endif
 
-STDAPI TestRecAlignment(TModuleRec *Rec)
+STDAPI tokenizer::TestRecAlignment(TModuleRec *Rec)
 /*Fill TModuleRec with predefined data.  This is intended to be used only for developers so programmer can check
   alignment of fields within the structure.  For verification, programmer is provided with list of TModuleRec
   elements and exactly what values to expect in each of them after calling this routine. */
@@ -448,7 +162,7 @@ STDAPI TestRecAlignment(TModuleRec *Rec)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI Version(void)
+STDAPI tokenizer::Version(void)
 /*Return version number of this tokenizer*/
 {
   return(TokenizerVersion);
@@ -457,7 +171,7 @@ STDAPI Version(void)
 /*------------------------------------------------------------------------------*/
 
 #if defined(DevDebug)
-STDAPI GetVariableItems(byte *VBitCount, byte *VBases)
+STDAPI tokenizer::GetVariableItems(byte *VBitCount, byte *VBases)
 /*Sets VBitCount to VarBitCount and sets elements 0..3 in VBases to VarBases[0..3].  Always returns True.*/
 {
   *VBitCount  = VarBitCount;
@@ -470,7 +184,7 @@ STDAPI GetVariableItems(byte *VBitCount, byte *VBases)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI GetSymbolTableItem(TSymbolTable *Sym, int Idx)
+STDAPI tokenizer::GetSymbolTableItem(TSymbolTable *Sym, int Idx)
 /*Sets Sym to the SymbolTable element indicated by Idx.  Returns True if successful, false if out of range*/
 {
   int CIdx;
@@ -494,7 +208,7 @@ STDAPI GetSymbolTableItem(TSymbolTable *Sym, int Idx)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI GetUndefSymbolTableItem(TUndefSymbolTable *Sym, int Idx)
+STDAPI tokenizer::GetUndefSymbolTableItem(TUndefSymbolTable *Sym, int Idx)
 /*Sets Sym to the UndefSymbolTable element indicated by Idx.  Returns True if successful, false if out of range*/
 {
   int CIdx;
@@ -516,7 +230,7 @@ STDAPI GetUndefSymbolTableItem(TUndefSymbolTable *Sym, int Idx)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI GetElementListItem(TElementList *Ele, int Idx)
+STDAPI tokenizer::GetElementListItem(TElementList *Ele, int Idx)
 /*Sets Ele to the ElementList element indicated by Idx.  Returns True if successful, false if out of range*/
 {
   if (Idx < ElementListEnd)
@@ -533,7 +247,7 @@ STDAPI GetElementListItem(TElementList *Ele, int Idx)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI GetGosubCount(void)
+STDAPI tokenizer::GetGosubCount(void)
 /*Returns gosub count*/
 {
   return(GosubCount);
@@ -542,7 +256,7 @@ STDAPI GetGosubCount(void)
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI Compile(TModuleRec *Rec, char *Src, bool DirectivesOnly, bool ParseStampDirective, TSrcTokReference *Ref)
+STDAPI tokenizer::Compile(TModuleRec *Rec, char *Src, bool DirectivesOnly, bool ParseStampDirective, TSrcTokReference *Ref)
 /*Compile entire source*/
 {
   tzModuleRec = Rec;						     /*Point to external ModuleRec structure*/
@@ -632,7 +346,7 @@ STDAPI Compile(TModuleRec *Rec, char *Src, bool DirectivesOnly, bool ParseStampD
 
 /*------------------------------------------------------------------------------*/
 
-STDAPI GetReservedWords(TModuleRec *Rec, char *Src)
+STDAPI tokenizer::GetReservedWords(TModuleRec *Rec, char *Src)
 /*Returns a list of all the reserved words and reserved word types based on the tzModuleRec->LanguageVersion and
 tzModuleRec->TargetModule.  The tzModuleRec->LanguageVersion and tzModuleRec->TargetModule fields MUST be set before
 calling this routine.
@@ -690,7 +404,7 @@ Returns True if successful, False otherwise.*/
 
 /*------------------------------------------------------------------------------*/
 
-byte ResWordTypeID(TElementType ElementType)
+byte tokenizer::ResWordTypeID(TElementType ElementType)
 /*Translate similar types to the common type*/
 {
   byte Result;
@@ -744,7 +458,7 @@ byte ResWordTypeID(TElementType ElementType)
 
 /*------------------------------------------------------------------------------*/
 
-void InitializeRec(void)
+void tokenizer::InitializeRec(void)
 /*Initialize most critical fields of tzModuleRec*/
 {
   int  Idx;
@@ -765,7 +479,7 @@ void InitializeRec(void)
 
 /*------------------------------------------------------------------------------*/
 
-void ClearEEPROM(void)
+void tokenizer::ClearEEPROM(void)
 /*Clear EEPROM byte array (to all 0's)*/
 {
   int  Idx;
@@ -776,7 +490,7 @@ void ClearEEPROM(void)
 
 /*------------------------------------------------------------------------------*/
 
-void ClearSrcTokReference(void)
+void tokenizer::ClearSrcTokReference(void)
 /*Clear the source code vs bit token cross reference list and initialize the index*/
 {
   int  Idx;
@@ -874,7 +588,7 @@ void ClearSrcTokReference(void)
                Note:   After the first operation command is written, all
                        following commands are preceeded by '1'.*/
 
-TErrorCode GetReadWrite(bool Write)
+TErrorCode tokenizer::GetReadWrite(bool Write)
 /*Get variable read/write expression.
   Write = True causes a write expression to be retrieved.
   Write = False causes a read expression to be retrieved.*/
@@ -894,7 +608,7 @@ TErrorCode GetReadWrite(bool Write)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetValueConditional(bool Conditional, bool PinIsConstant, int SplitExpression)
+TErrorCode tokenizer::GetValueConditional(bool Conditional, bool PinIsConstant, int SplitExpression)
 /*Set Condition True if retrieving conditional statement, set Condition False if retrieving Value statement.*/
 {
   TErrorCode    Result;
@@ -908,7 +622,7 @@ TErrorCode GetValueConditional(bool Conditional, bool PinIsConstant, int SplitEx
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetExpression(bool Conditional, bool PinIsConstant, int SplitExpression, bool CCDirective)
+TErrorCode tokenizer::GetExpression(bool Conditional, bool PinIsConstant, int SplitExpression, bool CCDirective)
 /*Get value or conditional expression and enter into Expression. This procedure is re-enterant.
  Conditional = True:  expression is parsed as a conditional expression and if we're in a SELECT CASE block, SplitExpression is
                       used to indicate the starting element of the second half of the split expression.
@@ -1102,7 +816,7 @@ TErrorCode GetExpression(bool Conditional, bool PinIsConstant, int SplitExpressi
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterExpressionConstant(TElementList Element)
+TErrorCode tokenizer::EnterExpressionConstant(TElementList Element)
 /*Enter constant in Element.Value into Expression*/
 {
   TErrorCode  Result;
@@ -1130,7 +844,7 @@ TErrorCode EnterExpressionConstant(TElementList Element)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterExpressionVariable(TElementList Element, bool Write)
+TErrorCode tokenizer::EnterExpressionVariable(TElementList Element, bool Write)
 /*Enter variable in Value into Expression (may be indexed).*/
 {
   TErrorCode    Result;
@@ -1162,7 +876,7 @@ TErrorCode EnterExpressionVariable(TElementList Element, bool Write)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterExpressionOperator(byte Data)
+TErrorCode tokenizer::EnterExpressionOperator(byte Data)
 /*Enter 6-bit operator in Data into Expression.  If not first operator, '1' will
 preceed 6-bit code.  StackIdx is tested and updated according to operator.*/
 {
@@ -1194,7 +908,7 @@ preceed 6-bit code.  StackIdx is tested and updated according to operator.*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterExpressionBits(byte Bits, word Data)
+TErrorCode tokenizer::EnterExpressionBits(byte Bits, word Data)
 /*Enter Bits bits of Data into Expression*/
 {
   byte ShiftFactor;
@@ -1216,7 +930,7 @@ TErrorCode EnterExpressionBits(byte Bits, word Data)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PushLeft(void)
+TErrorCode tokenizer::PushLeft(void)
 /*Push '(' onto ExpressionStack.  ExpStackTop incremented*/
 {
   TErrorCode  Result;
@@ -1228,7 +942,7 @@ TErrorCode PushLeft(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode Push(byte Data)
+TErrorCode tokenizer::Push(byte Data)
 /*Push Data onto ExpressionStack.  ExpStackTop incremented*/
 {
   if (ExpStackTop == 255) return(Error(ecEITC));    /*Out of stack space?  Error: Expression Is Too Complex*/
@@ -1239,7 +953,7 @@ TErrorCode Push(byte Data)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PopLeft(void)
+TErrorCode tokenizer::PopLeft(void)
 /*Pop '(' then pop and enter operators from ExpressionStack into Expression before '('
 or until empty.*/
 {
@@ -1254,7 +968,7 @@ or until empty.*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PopOperators(TElementList *Element)
+TErrorCode tokenizer::PopOperators(TElementList *Element)
 /*Pop and enter operators from ExpressionStack into Expression before a '(' or until
 empty.*/
 {
@@ -1273,7 +987,7 @@ empty.*/
 
 /*------------------------------------------------------------------------------*/
 
-bool Pop1Operator(TElementList *Element)
+bool tokenizer::Pop1Operator(TElementList *Element)
 /*Pop operator from ExpressionStack into Element.Value.  ExpStackTop adjusted
 and compared to ExpStackBottom.  Returns true if value popped, false if stack empty.*/
 {
@@ -1291,7 +1005,7 @@ and compared to ExpStackBottom.  Returns true if value popped, false if stack em
 
 /*------------------------------------------------------------------------------*/
 
-void CopyExpression(byte SourceNumber, byte DestinationNumber)
+void tokenizer::CopyExpression(byte SourceNumber, byte DestinationNumber)
 /*Copy expression from Expression[SourceNumber,...] to Expression[DestinationNumber,...].
 SourceNumber and DestinationNumber must be 0 to 3*/
 {
@@ -1302,7 +1016,7 @@ SourceNumber and DestinationNumber must be 0 to 3*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterExpression(byte ExpNumber, bool Enter1Before)
+TErrorCode tokenizer::EnterExpression(byte ExpNumber, bool Enter1Before)
 /*Enter expression(ExpNumber) into EEPROM.  Preceede expression with a 1 if
 Enter1Before is true. ExpNumber should be 0 to 3*/
 {
@@ -1323,7 +1037,7 @@ Enter1Before is true. ExpNumber should be 0 to 3*/
 /*------------------------------- Symbol Engine --------------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode InitSymbols(void)
+TErrorCode tokenizer::InitSymbols(void)
 /*Clear all vectors (SymbolVector and UndefSymbolVector array and SymbolTable.NextRecord and
 UndefSymbolTable.NextRecord) to -1, clear SymbolTablePointer and UndefSymbolTablePointer to 0,
 and insert all automatic symbols into SymbolTable.*/
@@ -1348,7 +1062,7 @@ and insert all automatic symbols into SymbolTable.*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode AdjustSymbols(void)
+TErrorCode tokenizer::AdjustSymbols(void)
 /*Add additional automatic symbols into symbol table for designated target module and PBASIC Language version.*/
 {
   int         Idx;
@@ -1371,7 +1085,7 @@ TErrorCode AdjustSymbols(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterSymbol(TSymbolTable Symbol)
+TErrorCode tokenizer::EnterSymbol(TSymbolTable Symbol)
 /*Enter symbol into next available location in SymbolTable*/
 {
   int Vector;
@@ -1395,7 +1109,7 @@ TErrorCode EnterSymbol(TSymbolTable Symbol)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterUndefSymbol(char *Name)
+TErrorCode tokenizer::EnterUndefSymbol(char *Name)
 /*Enter undefined symbol into next available location in UndefSymbolTable.  The Undefined Symbol Table is used to record
  undefined symbol names that are DATA, VAR, CON or PIN types so they can be distinguished from un-DEFINE'd symbols in the
  GetExpression routine while parsing Conditional Compile Directive expressions.*/
@@ -1419,7 +1133,7 @@ TErrorCode EnterUndefSymbol(char *Name)
 
 /*------------------------------------------------------------------------------*/
 
-bool FindSymbol(TSymbolTable *Symbol)
+bool tokenizer::FindSymbol(TSymbolTable *Symbol)
 /*Find Symbol.Name in SymbolTable.  Returns true if successful and sets Symbol.ElementType and Symbol.Value.
   Returns false if not found and Symbol.ElementType = etUndef and Symbol.Value = 0;*/
 {
@@ -1446,7 +1160,7 @@ bool FindSymbol(TSymbolTable *Symbol)
 
 /*------------------------------------------------------------------------------*/
 
-bool ModifySymbolValue(const char *Name, word Value)
+bool tokenizer::ModifySymbolValue(const char *Name, word Value)
 /*Find Name in SymbolTable and modify its value.  Returns true if successful.
 Returns false if not found;*/
 {
@@ -1459,7 +1173,7 @@ Returns false if not found;*/
 
 /*------------------------------------------------------------------------------*/
 
-int GetSymbolVector(const char *Name)
+int tokenizer::GetSymbolVector(const char *Name)
 /*Find vector (element number) of Symbol.Name in SymbolTable.  Returns value >= 0 if successful
 Returns -1 if fails.*/
 {
@@ -1474,7 +1188,7 @@ Returns -1 if fails.*/
 
 /*------------------------------------------------------------------------------*/
 
-int GetUndefSymbolVector(char *Name)
+int tokenizer::GetUndefSymbolVector(char *Name)
 /*Find vector (element number) of Symbol.Name in UndefSymbolTable.  Returns value >= 0 if successful.
 Returns -1 if fails.*/
 {
@@ -1488,7 +1202,7 @@ Returns -1 if fails.*/
 
 /*------------------------------------------------------------------------------*/
 
-int CalcSymbolHash(const char *SymbolName)
+int tokenizer::CalcSymbolHash(const char *SymbolName)
 /*Calculate additive hash from characters within Symbol (truncated to SymbolTableSize-1).  This becomes
 the vector index of the SymbolVector array.*/
 {
@@ -1504,7 +1218,7 @@ the vector index of the SymbolVector array.*/
 /*----------------------------- Elementize Engine ------------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode ElementError(bool IncLength, TErrorCode ErrorID)
+TErrorCode tokenizer::ElementError(bool IncLength, TErrorCode ErrorID)
 /*Set source pointers and then raise error.  This is done because element engine
   is otherwise too low-level to produce correct error output in normal fashion.*/
 {
@@ -1515,7 +1229,7 @@ TErrorCode ElementError(bool IncLength, TErrorCode ErrorID)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterElement(TElementType ElementType, word Value, bool IsEnd)
+TErrorCode tokenizer::EnterElement(TElementType ElementType, word Value, bool IsEnd)
 /*Enter element record into list.*/
 {
   if (IsEnd) if (EndEntered) return(ecS); else ElementType = etEnd;
@@ -1533,7 +1247,7 @@ TErrorCode EnterElement(TElementType ElementType, word Value, bool IsEnd)
 
 /*------------------------------------------------------------------------------*/
 
-void SkipToEnd(void)
+void tokenizer::SkipToEnd(void)
 /*Skip to beginning of next line*/
 {
   while (tzSource[SrcIdx] != ETX) SrcIdx++;
@@ -1542,7 +1256,7 @@ void SkipToEnd(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetString(void)
+TErrorCode tokenizer::GetString(void)
 /*Elementize string constant into comma separated elements (etConstants)*/
 {
   TErrorCode  Result;
@@ -1569,7 +1283,7 @@ TErrorCode GetString(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetNumber(TBase Base, byte DPDigits, word *Result)
+TErrorCode tokenizer::GetNumber(TBase Base, byte DPDigits, word *Result)
 /*Convert numeric text to word-sized value.  DPDigits causes this routine to accept a decimal point in the number, or not.
   If DPDigits is >0, decimal point is accepted; the resulting number contains all the digits, but no decimal point, and is
   right-padded with as many 0s as it takes to fill DPDigits digits to the right of the decimal point (ie: DPDigits = 2
@@ -1617,7 +1331,7 @@ TErrorCode GetNumber(TBase Base, byte DPDigits, word *Result)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetSymbol(void)
+TErrorCode tokenizer::GetSymbol(void)
 /*Retrieve symbol, check if in symbol table and enter element record for it.
     Default (no symbol found in table) -> Element Type = etUndef, Value = 0
     Otherwise (symbol is in table)     -> Element Type = Symbol's Type, Value = Symbol's value*/
@@ -1648,7 +1362,7 @@ TErrorCode GetSymbol(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetFilename(bool Quoted)
+TErrorCode tokenizer::GetFilename(bool Quoted)
 /*Retrieve filename.  Used for $STAMP directive.  Quoted should be true when a quoted string is expected.*/
   {
   TErrorCode  Result;
@@ -1668,7 +1382,7 @@ TErrorCode GetFilename(bool Quoted)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetDirective(void)
+TErrorCode tokenizer::GetDirective(void)
 /*Looks for '{$' on comment line. (Note: Whitespace is allowed).  Skips to end of line after directive is parsed or
   if no directive detected.*/
 {
@@ -1738,7 +1452,7 @@ TErrorCode GetDirective(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode Elementize(bool LastPass)
+TErrorCode tokenizer::Elementize(bool LastPass)
 /*Elementize source (parse source items into elements array).
  If LastPass = False, we elementize editor directives: $STAMP, $PORT, etc
  If LastPass = True,  we elementize entire source code, excluding editor directives*/
@@ -1862,7 +1576,7 @@ TErrorCode Elementize(bool LastPass)
 
 /*------------------------------------------------------------------------------*/
 
-bool GetElement(TElementList *Element)
+bool tokenizer::GetElement(TElementList *Element)
 /*Retrieve element at ElementListIdx and update element if it is undefined.  Returns element values in Element.
  Returns True if successful, False if not found.*/
 {
@@ -1902,7 +1616,7 @@ bool GetElement(TElementList *Element)
 
 /*------------------------------------------------------------------------------*/
 
-bool PreviewElement(TElementList *Preview)
+bool tokenizer::PreviewElement(TElementList *Preview)
 /*Preview next element (don't change index)*/
 {
   int  CurrentStart;
@@ -1920,7 +1634,7 @@ bool PreviewElement(TElementList *Preview)
 
 /*------------------------------------------------------------------------------*/
 
-void CancelElements(word Start, word Finish)
+void tokenizer::CancelElements(word Start, word Finish)
 /*Cancel elements from start to finish*/
 {
   int Idx;
@@ -1930,7 +1644,7 @@ void CancelElements(word Start, word Finish)
 
 /*------------------------------------------------------------------------------*/
 
-void VoidElements(word Start, word Finish)
+void tokenizer::VoidElements(word Start, word Finish)
 /*Cancel elements from start to finish and if element at Finish+1 is End and first non-cancelled element before Start is
  End, cancel the element at Finish+1 also.*/
 {
@@ -1947,7 +1661,7 @@ void VoidElements(word Start, word Finish)
 
 /*------------------------------------------------------------------------------*/
 
-void GetSymbolName(int Start, int Length)
+void tokenizer::GetSymbolName(int Start, int Length)
 /*Retrieve symbol name from source starting at Start and ending at Length-1.  Sets Symbol equal to name.*/
 {
   int  Idx;
@@ -1961,7 +1675,7 @@ void GetSymbolName(int Start, int Length)
 /*----------------------------- Directive Compilers ----------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileEditorDirectives(void)
+TErrorCode tokenizer::CompileEditorDirectives(void)
 /*Compile all editor directives*/
 {
   TErrorCode  Result;
@@ -1988,7 +1702,7 @@ TErrorCode CompileEditorDirectives(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileStampDirective(void)
+TErrorCode tokenizer::CompileStampDirective(void)
 /*Compile $Stamp directive to determine target module to compile for.*/
 {
   word          StartOfLine;
@@ -2046,7 +1760,7 @@ TErrorCode CompileStampDirective(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePortDirective(void)
+TErrorCode tokenizer::CompilePortDirective(void)
 /*Compile $Port directive to determine target serial port to download to.*/
 {
   word          StartOfLine;
@@ -2086,7 +1800,7 @@ TErrorCode CompilePortDirective(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePBasicDirective(void)
+TErrorCode tokenizer::CompilePBasicDirective(void)
 /*Compile $PBASIC directive to determine target PBASIC Language version to use.*/
 {
   word          StartOfLine;
@@ -2120,7 +1834,7 @@ TErrorCode CompilePBasicDirective(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCCDirectives(void)
+TErrorCode tokenizer::CompileCCDirectives(void)
 /*Compile conditional-compile directives (#IF, #THEN, #ELSE, #ENDIF, #DEFINE, #ERROR, #SELECT, #CASE, #ENDSELECT) to
  determine which portions of PBASIC code to ignore.  This routine MUST be run after Elementize(True) to cancel out
  unnecessary elements.
@@ -2186,7 +1900,7 @@ TErrorCode CompileCCDirectives(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompileCCIf(void)
+TErrorCode tokenizer::CompileCCIf(void)
 /*Conditional-Compile Directive #IF..#THEN
   Syntax: #IF condition(s) #THEN statement(s) {#ELSE statement(s)} #ENDIF
   NOTE: NestingStack is used to keep track of current portion (Main/Else), cancel/non-cancel status and potential nesting.
@@ -2214,7 +1928,7 @@ TErrorCode CompileCCIf(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompileCCElse(void)
+TErrorCode tokenizer::CompileCCElse(void)
 /*Conditional-Compile Directive #ELSE
   Syntax: #IF..#THEN /../ #ELSE /../ #ENDIF
   Note: #ELSE statements need not be followed by an End.*/
@@ -2233,7 +1947,7 @@ TErrorCode CompileCCElse(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCCEndIf(void)
+TErrorCode tokenizer::CompileCCEndIf(void)
 /*Conditional-Compile Directive #ENDIF
   Syntax: #IF..#THEN /../ #ELSE /../ #ENDIF.
   NOTE: #ENDIF statements need not be followed by an End.*/
@@ -2250,7 +1964,7 @@ TErrorCode CompileCCEndIf(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCCDefine(void)
+TErrorCode tokenizer::CompileCCDefine(void)
 /*Conditional-Compile Directive #DEFINE
   Syntax: #DEFINE symbol {= value}
   NOTE: value can be a constant expression, though only numbers, operators, DEFINE'd values and "compile pre-defined"
@@ -2293,7 +2007,7 @@ TErrorCode CompileCCDefine(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompileCCError(void)
+TErrorCode tokenizer::CompileCCError(void)
 /*Conditional-Compile Directive #ERROR
   Syntax: #ERROR "string"
   Note: #ERROR statements must be followed by an End*/
@@ -2336,7 +2050,7 @@ TErrorCode CompileCCError(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompileCCSelect(void)
+TErrorCode tokenizer::CompileCCSelect(void)
 /*Syntax: #SELECT expression /../ #CASE { (condition(s)|#ELSE) }{:} /../ #ENDSELECT
   NOTE: The NestingStack is used to keep track of potential nesting as well as:
         .ElementIdx = Start of #SELECT (in case of error as well as cancel-pointer)
@@ -2370,7 +2084,7 @@ TErrorCode CompileCCSelect(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode AppendExpression(byte SourceExpression, TOperatorCode AppendOperator)
+TErrorCode tokenizer::AppendExpression(byte SourceExpression, TOperatorCode AppendOperator)
 /*Append SourceExpression and AppendOperator to expression 0.  Used by CompileCCCase and CompileCase.*/
 {
   byte        Idx;
@@ -2389,7 +2103,7 @@ TErrorCode AppendExpression(byte SourceExpression, TOperatorCode AppendOperator)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCCCase(void)
+TErrorCode tokenizer::CompileCCCase(void)
 /*Syntax: #SELECT expression /../ #CASE { (condition(s)|#ELSE) }{:} /../ #ENDSELECT
   NOTE: #CASE condition(s) must be followed by and End.*/
 {
@@ -2472,7 +2186,7 @@ TErrorCode CompileCCCase(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompileCCEndSelect(void)
+TErrorCode tokenizer::CompileCCEndSelect(void)
 /*Syntax: #SELECT expression /../ #CASE { (condition(s)|#ELSE) }{:} /../ #ENDSELECT
   Note: #ENDSELECT need not be followed by an End*/
 {
@@ -2495,7 +2209,7 @@ TErrorCode CompileCCEndSelect(void)
 /*------------------------------------------------------------------------------*/
 
 
-TErrorCode CompilePins(bool LastPass)
+TErrorCode tokenizer::CompilePins(bool LastPass)
 /*Compile PIN directives.  These are resolved as constants, but are called etPinNumber and
  treated as a constant or a variable of the form INx or OUTx based on the context of the
  reference.
@@ -2553,7 +2267,7 @@ TErrorCode CompilePins(bool LastPass)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileConstants(bool LastPass)
+TErrorCode tokenizer::CompileConstants(bool LastPass)
 /*Compile CON directives.
  If LastPass = false, we "try" to compile them (compiled 'CON' lines are canceled)
  If LastPass = true,  we compile (all remaining 'CON' lines are compiled and canceled)*/
@@ -2597,7 +2311,7 @@ TErrorCode CompileConstants(bool LastPass)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode AssignSymbol(bool *SymbolFlag, word *EEPROMIdx)
+TErrorCode tokenizer::AssignSymbol(bool *SymbolFlag, word *EEPROMIdx)
 /*Set Symbol to current EEPROM Data pointer location*/
 {
   TErrorCode  Result;
@@ -2614,7 +2328,7 @@ TErrorCode AssignSymbol(bool *SymbolFlag, word *EEPROMIdx)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterData(TElementList *Element, word *EEPROMValue, word *EEPROMIdx, bool WordFlag, bool DefinedFlag, bool LastPass)
+TErrorCode tokenizer::EnterData(TElementList *Element, word *EEPROMValue, word *EEPROMIdx, bool WordFlag, bool DefinedFlag, bool LastPass)
 /*Enter Data into EEPROM at EEPROMIdx*/
 {
   byte    Idx;
@@ -2640,7 +2354,7 @@ TErrorCode EnterData(TElementList *Element, word *EEPROMValue, word *EEPROMIdx, 
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileData(bool LastPass)
+TErrorCode tokenizer::CompileData(bool LastPass)
 /*Compile data directives.
  If LastPass = false, we "try" to compile them (all 'DATA' symbols are compiled and canceled)
  If LastPass = true,  we compile (all 'DATA' lines are compiled and canceled)*/
@@ -2766,7 +2480,7 @@ TErrorCode CompileData(bool LastPass)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetModifiers(TElementList *Element)
+TErrorCode tokenizer::GetModifiers(TElementList *Element)
 /*Get modifiers and modify Element's Code/Size (stored in .Value as Size in highbyte and Code in lowbyte)*/
 {
   TElementList  SavedElement;
@@ -2802,7 +2516,7 @@ TErrorCode GetModifiers(TElementList *Element)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileVar(bool LastPass)
+TErrorCode tokenizer::CompileVar(bool LastPass)
 /*Compile var directives.
  If LastPass = false, we "try" to compile them (compiled 'VAR' lines are canceled, autos counted)
  If LastPass = true,  we compile (all remaining 'VAR' lines are compiled and canceled)*/
@@ -2916,7 +2630,7 @@ TErrorCode CompileVar(bool LastPass)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode ResolveConstant(bool LastPass, bool CCDefine, bool *Resolved)
+TErrorCode tokenizer::ResolveConstant(bool LastPass, bool CCDefine, bool *Resolved)
 /*Resolve constant expression. Set LastPass = False to "try to" resolve, set it =
  True to fail if constant not yet resolved.  Set CCDefine = True if resolving
  a #SELECT expression.  Returns true if resolved, false otherwise.*/
@@ -2992,7 +2706,7 @@ TErrorCode ResolveConstant(bool LastPass, bool CCDefine, bool *Resolved)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetCCDirectiveExpression(int SplitExpression)
+TErrorCode tokenizer::GetCCDirectiveExpression(int SplitExpression)
 /*Get CCDirective Expression into expression 0*/
 {
   TErrorCode  Result;
@@ -3007,7 +2721,7 @@ TErrorCode GetCCDirectiveExpression(int SplitExpression)
 
 /*------------------------------------------------------------------------------*/
 
-int GetExpBits(byte Bits, word *BitIdx)
+int tokenizer::GetExpBits(byte Bits, word *BitIdx)
 /*Extract bits from expression 0, starting with BitIdx bit (from the left).  Bits is the number of bits to retrieve.
   This routine is used by ResolveCCDirectiveExpression.*/
 {
@@ -3025,7 +2739,7 @@ int GetExpBits(byte Bits, word *BitIdx)
 
 /*------------------------------------------------------------------------------*/
 
-int RaiseToPower(int Base, int Exponent)
+int tokenizer::RaiseToPower(int Base, int Exponent)
 /*This routine is used by ResolveCCDirectiveExpression.*/
 {
   int  Result;
@@ -3041,7 +2755,7 @@ int RaiseToPower(int Base, int Exponent)
 
 /*------------------------------------------------------------------------------*/
 
-int ResolveCCDirectiveExpression(void)
+int tokenizer::ResolveCCDirectiveExpression(void)
 /*Resolve conditional-compile directive expression in expression 0.  Returns actual expression value*/
 {
   word  BitIdx;
@@ -3114,7 +2828,7 @@ int ResolveCCDirectiveExpression(void)
 /*---------------------------- Instruction Compilers ---------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileInstructions(void)
+TErrorCode tokenizer::CompileInstructions(void)
 {
   TErrorCode    Result;
   bool          StartFlag;
@@ -3287,7 +3001,7 @@ TErrorCode CompileInstructions(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileAuxio(void)
+TErrorCode tokenizer::CompileAuxio(void)
 /*Syntax: AUXIO*/
 {
   TErrorCode    Result;
@@ -3298,7 +3012,7 @@ TErrorCode CompileAuxio(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileBranch(void)
+TErrorCode tokenizer::CompileBranch(void)
 /*Syntax: BRANCH index,[address0,address1,..addressN]*/
 {
   TErrorCode    Result;
@@ -3320,7 +3034,7 @@ TErrorCode CompileBranch(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileButton(void)
+TErrorCode tokenizer::CompileButton(void)
 /*Syntax: BUTTON pin, state, delay, rate, bytevariable, targetstate, address*/
 {
   TErrorCode  Result;
@@ -3359,7 +3073,7 @@ TErrorCode CompileButton(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCase(void)
+TErrorCode tokenizer::CompileCase(void)
 /*Syntax: SELECT expression /../ CASE { (condition(s)|ELSE) }{:} /../ ENDSELECT
   NOTE: See CompileSelect for implementation examples. */
 {
@@ -3448,7 +3162,7 @@ TErrorCode CompileCase(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileCount(void)
+TErrorCode tokenizer::CompileCount(void)
 /*Syntax: COUNT pin, milliseconds, variable*/
 {
   TErrorCode    Result;
@@ -3467,7 +3181,7 @@ TErrorCode CompileCount(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileDebug(void)
+TErrorCode tokenizer::CompileDebug(void)
 /*Syntax: DEBUG outdata*/
 {
   TErrorCode    Result;
@@ -3487,7 +3201,7 @@ TErrorCode CompileDebug(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileDebugIn(void)
+TErrorCode tokenizer::CompileDebugIn(void)
 /*Syntax: DEBUGIN indata*/
 {
   TErrorCode  Result;
@@ -3510,7 +3224,7 @@ TErrorCode CompileDebugIn(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileDo(void)
+TErrorCode tokenizer::CompileDo(void)
 /*Syntax: DO {{WHILE | UNTIL} condition} /../ LOOP {{WHILE | UNTIL} condition}
   NOTE: a DO..LOOP may contain no conditions, making it an endless loop
   NOTE: The NestingStack is used to keep track of addresses to jump to or patch and potential nesting.
@@ -3595,7 +3309,7 @@ TErrorCode CompileDo(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileDtmfout(void)
+TErrorCode tokenizer::CompileDtmfout(void)
 /*Syntax: DTMFOUT pin, {OnMilliseconds, OffMilliseconds,} [key0, key1,...keyN]*/
 {
   TErrorCode    Result;
@@ -3636,7 +3350,7 @@ TErrorCode CompileDtmfout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileElse(void)
+TErrorCode tokenizer::CompileElse(void)
 /*Syntax: IF..THEN..{ELSEIF..}..ELSE --or-- IF..THEN /../ {ELSEIF /../..} {ELSE /../} ENDIF
   NOTE: See CompileIF for implementation examples*/
 {
@@ -3656,7 +3370,7 @@ TErrorCode CompileElse(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileEnd(void)
+TErrorCode tokenizer::CompileEnd(void)
 /*Syntax: END*/
 {
   TErrorCode  Result;
@@ -3667,7 +3381,7 @@ TErrorCode CompileEnd(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileEndIf(void)
+TErrorCode tokenizer::CompileEndIf(void)
 /*Syntax: IF..THEN /../ {ELSEIF /../..} {ELSE /../} ENDIF
   Patch the SkipLabel and Finish IF..THEN.
   NOTE: See CompileIF for implementation examples.*/
@@ -3685,7 +3399,7 @@ TErrorCode CompileEndIf(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileEndSelect(void)
+TErrorCode tokenizer::CompileEndSelect(void)
 /*Syntax: SELECT expression /../ CASE { (condition(s)|ELSE) }{:} /../ ENDSELECT
   NOTE: See CompileSelect for implementation examples. */
 {
@@ -3703,7 +3417,7 @@ TErrorCode CompileEndSelect(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileExit(void)
+TErrorCode tokenizer::CompileExit(void)
 /*Syntax: EXIT
  NOTE: EXIT can only appear within a DO..LOOP or FOR..NEXT loop*/
 {
@@ -3726,7 +3440,7 @@ TErrorCode CompileExit(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileFor(void)
+TErrorCode tokenizer::CompileFor(void)
 /*Syntax: FOR variable = value1 to value2 {STEP value3}*/
 {
   TElementList  Element;
@@ -3758,7 +3472,7 @@ TErrorCode CompileFor(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileFreqout(void)
+TErrorCode tokenizer::CompileFreqout(void)
 /*Syntax: FREQOUT pin, duration, frequency1 {,frequency2}*/
 {
   TErrorCode    Result;
@@ -3787,7 +3501,7 @@ TErrorCode CompileFreqout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileGet(void)
+TErrorCode tokenizer::CompileGet(void)
 /*Syntax: GET location, {WORD} variable {,{WORD} variable...*/
 {
   TElementList  Element;
@@ -3882,7 +3596,7 @@ TErrorCode CompileGet(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileGosub(void)
+TErrorCode tokenizer::CompileGosub(void)
 /*Syntax: GOSUB address*/
 {
   TErrorCode  Result;
@@ -3897,7 +3611,7 @@ TErrorCode CompileGosub(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileGoto(void)
+TErrorCode tokenizer::CompileGoto(void)
 /*Syntax: GOTO address*/
 {
   TErrorCode  Result;
@@ -3909,7 +3623,7 @@ TErrorCode CompileGoto(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileHigh(void)
+TErrorCode tokenizer::CompileHigh(void)
 /*Syntax: HIGH pin*/
 {
   TErrorCode    Result;
@@ -3922,7 +3636,7 @@ TErrorCode CompileHigh(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileI2cin(void)
+TErrorCode tokenizer::CompileI2cin(void)
 /*Syntax: I2CIN pin, slaveid, {address {\lowaddress} ,} [inputdata]*/
 /*Modified 4/2/02 to support optional address feature in BS2p firmware v1.3 (and BS2pe firmware v1.0)*/
 {
@@ -3973,7 +3687,7 @@ TErrorCode CompileI2cin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileI2cout(void)
+TErrorCode tokenizer::CompileI2cout(void)
 /*Syntax: I2COUT pin, slaveid, {address {\lowaddress} ,} [outputdata]*/
 /*Modified 4/2/02 to support optional address feature in BS2p firmware v1.3 (and BS2p firmware v1.0)*/
 {
@@ -4023,7 +3737,7 @@ TErrorCode CompileI2cout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileIf(bool ElseIf)
+TErrorCode tokenizer::CompileIf(bool ElseIf)
 /*Syntax: IF condition(s) THEN address
    --OR-- IF condition(s) THEN statement(s) {ELSE statement(s)}
    --OR-- IF condition(s) THEN / statement(s) {/ ELSEIF / statement(s)...} {/ ELSE / statement(s)} / ENDIF
@@ -4208,7 +3922,7 @@ TErrorCode CompileIf(bool ElseIf)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileInput(void)
+TErrorCode tokenizer::CompileInput(void)
 /*Syntax: INPUT pin*/
 {
   TErrorCode    Result;
@@ -4221,7 +3935,7 @@ TErrorCode CompileInput(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileIoterm(void)
+TErrorCode tokenizer::CompileIoterm(void)
 /*Syntax: IOTERM bank*/
 {
   TErrorCode    Result;
@@ -4234,7 +3948,7 @@ TErrorCode CompileIoterm(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLcdcmd(void)
+TErrorCode tokenizer::CompileLcdcmd(void)
 /*Syntax: LCDCMD pin,command*/
 {
   TErrorCode    Result;
@@ -4251,7 +3965,7 @@ TErrorCode CompileLcdcmd(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLcdin(void)
+TErrorCode tokenizer::CompileLcdin(void)
 /*Syntax: LCDIN pin,command,[inputdata]*/
 {
   TErrorCode    Result;
@@ -4272,7 +3986,7 @@ TErrorCode CompileLcdin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLcdout(void)
+TErrorCode tokenizer::CompileLcdout(void)
 /*Syntax: LCDOUT pin,command,[outputdata]*/
 {
   TErrorCode    Result;
@@ -4293,7 +4007,7 @@ TErrorCode CompileLcdout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLet(void)
+TErrorCode tokenizer::CompileLet(void)
 /*Syntax: variable = expression*/
 {
   TErrorCode  Result;
@@ -4310,7 +4024,7 @@ TErrorCode CompileLet(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLookdown(void)
+TErrorCode tokenizer::CompileLookdown(void)
 /*Syntax: LOOKDOWN target, {??} [value0, value1,...valueN], variable*/
 {
   TErrorCode    Result;
@@ -4346,7 +4060,7 @@ TErrorCode CompileLookdown(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLookup(void)
+TErrorCode tokenizer::CompileLookup(void)
 /*Syntax: LOOKUP index, [value0, value1,...valueN], variable*/
 {
   TErrorCode    Result;
@@ -4373,7 +4087,7 @@ TErrorCode CompileLookup(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLoop(void)
+TErrorCode tokenizer::CompileLoop(void)
 /*Syntax: DO {{WHILE | UNTIL} condition} /../ LOOP {{WHILE | UNTIL} condition}
   NOTE: a DO..LOOP may contain no conditions, making it an endless loop
   NOTE: See CompileDo for implementation examples.*/
@@ -4423,7 +4137,7 @@ TErrorCode CompileLoop(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileLow(void)
+TErrorCode tokenizer::CompileLow(void)
 /*Syntax: LOW pin*/
 {
   TErrorCode    Result;
@@ -4436,7 +4150,7 @@ TErrorCode CompileLow(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileMainio(void)
+TErrorCode tokenizer::CompileMainio(void)
 /*Syntax: MAINIO*/
 {
   TErrorCode    Result;
@@ -4447,7 +4161,7 @@ TErrorCode CompileMainio(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileNap(void)
+TErrorCode tokenizer::CompileNap(void)
 /*{Syntax: Nap period*/
 {
   TErrorCode    Result;
@@ -4461,7 +4175,7 @@ TErrorCode CompileNap(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileNext(void)
+TErrorCode tokenizer::CompileNext(void)
 /*Syntax: NEXT*/
 {
   TErrorCode    Result;
@@ -4509,7 +4223,7 @@ TErrorCode CompileNext(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileOn(void)
+TErrorCode tokenizer::CompileOn(void)
 /*Syntax: ON index (GOTO|GOSUB) label {, label...}
   NOTE: The BS2 through BS2pe do not have ON..GOTO or ON..GOSUB implemented in firmware.
         To achieve an ON..GOTO or ON..GOSUB, the command is translated into the following (The actual source isn't
@@ -4561,7 +4275,7 @@ TErrorCode CompileOn(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileOutput(void)
+TErrorCode tokenizer::CompileOutput(void)
 /*Syntax: OUTPUT pin*/
 {
   TErrorCode    Result;
@@ -4574,7 +4288,7 @@ TErrorCode CompileOutput(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileOwin(void)
+TErrorCode tokenizer::CompileOwin(void)
 /*Syntax: OWIN pin, mode, [inputdata]*/
 {
   TErrorCode    Result;
@@ -4595,7 +4309,7 @@ TErrorCode CompileOwin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileOwout(void)
+TErrorCode tokenizer::CompileOwout(void)
 /*Syntax: OWOUT pin, mode, [outputdata]*/
 {
   TErrorCode    Result;
@@ -4616,7 +4330,7 @@ TErrorCode CompileOwout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePause(void)
+TErrorCode tokenizer::CompilePause(void)
 /*Syntax: PAUSE milliseconds*/
 {
   TErrorCode    Result;
@@ -4629,7 +4343,7 @@ TErrorCode CompilePause(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePollin(void)
+TErrorCode tokenizer::CompilePollin(void)
 /*Syntax: POLLIN pin, state*/
 {
   TErrorCode    Result;
@@ -4646,7 +4360,7 @@ TErrorCode CompilePollin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePollmode(void)
+TErrorCode tokenizer::CompilePollmode(void)
 /*Syntax: POLLMODE mode*/
 {
   TErrorCode    Result;
@@ -4659,7 +4373,7 @@ TErrorCode CompilePollmode(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePollout(void)
+TErrorCode tokenizer::CompilePollout(void)
 /*Syntax: POLLOUT pin, state*/
 {
   TErrorCode    Result;
@@ -4676,7 +4390,7 @@ TErrorCode CompilePollout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePollrun(void)
+TErrorCode tokenizer::CompilePollrun(void)
 /*Syntax: POLLRUN SlotNumber*/
 {
   TErrorCode    Result;
@@ -4689,7 +4403,7 @@ TErrorCode CompilePollrun(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePollwait(void)
+TErrorCode tokenizer::CompilePollwait(void)
 /*Syntax: POLLWAIT period*/
 {
   TErrorCode    Result;
@@ -4703,7 +4417,7 @@ TErrorCode CompilePollwait(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePulsin(void)
+TErrorCode tokenizer::CompilePulsin(void)
 /*Syntax: PULSIN pin, state, variable*/
 {
   TErrorCode    Result;
@@ -4722,7 +4436,7 @@ TErrorCode CompilePulsin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePulsout(void)
+TErrorCode tokenizer::CompilePulsout(void)
 /*Syntax: PULSOUT pin, milliseconds*/
 {
   TErrorCode    Result;
@@ -4739,7 +4453,7 @@ TErrorCode CompilePulsout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePut(void)
+TErrorCode tokenizer::CompilePut(void)
 /*Syntax: PUT location, {WORD} value {,{WORD} value...}*/
 {
   TElementList  Element;
@@ -4807,7 +4521,7 @@ TErrorCode CompilePut(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompilePwm(void)
+TErrorCode tokenizer::CompilePwm(void)
 /*Syntax: PWM pin, duty, cycles*/
 {
   TErrorCode    Result;
@@ -4827,7 +4541,7 @@ TErrorCode CompilePwm(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileRandom(void)
+TErrorCode tokenizer::CompileRandom(void)
 /*Syntax: RANDOM variable*/
 {
   TErrorCode    Result;
@@ -4846,7 +4560,7 @@ TErrorCode CompileRandom(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileRctime(void)
+TErrorCode tokenizer::CompileRctime(void)
 /*Syntax: RCTIME pin, state, variable*/
 {
   TErrorCode    Result;
@@ -4865,7 +4579,7 @@ TErrorCode CompileRctime(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileRead(void)
+TErrorCode tokenizer::CompileRead(void)
 /*Syntax: READ location, {WORD} variable {,{WORD} variable...*/
 {
   TElementList  Element;
@@ -4963,7 +4677,7 @@ TErrorCode CompileRead(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileReturn(void)
+TErrorCode tokenizer::CompileReturn(void)
 /*Syntax: RETURN*/
 {
   TErrorCode  Result;
@@ -4974,7 +4688,7 @@ TErrorCode CompileReturn(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileReverse(void)
+TErrorCode tokenizer::CompileReverse(void)
 /*Syntax: REVERSE pin*/
 {
   TErrorCode    Result;
@@ -4987,7 +4701,7 @@ TErrorCode CompileReverse(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileRun(void)
+TErrorCode tokenizer::CompileRun(void)
 /*Syntax: RUN SlotNumber*/
 {
   TErrorCode    Result;
@@ -5000,7 +4714,7 @@ TErrorCode CompileRun(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileSelect(void)
+TErrorCode tokenizer::CompileSelect(void)
 /*Syntax: SELECT expression /../ CASE { (condition(s)|ELSE) }{:} /../ ENDSELECT
   NOTE: The NestingStack is used to keep track of addresses to patch, the element starting the expression, default
   conditional operators and potential nesting.
@@ -5056,7 +4770,7 @@ TErrorCode CompileSelect(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetTimeout(void)
+TErrorCode tokenizer::GetTimeout(void)
 /*Get Timeout and Timeout Label for SERIN command*/
 {
   TErrorCode    Result;
@@ -5073,7 +4787,7 @@ TErrorCode GetTimeout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileSerin(void)
+TErrorCode tokenizer::CompileSerin(void)
 /*Syntax: SERIN dpin\fpin, baudmode, {plabel,} {timeout, tlabel,} [indata]*/
 {
   TErrorCode    Result;
@@ -5134,7 +4848,7 @@ TErrorCode CompileSerin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileSerout(void)
+TErrorCode tokenizer::CompileSerout(void)
 /*Syntax: SEROUT dpin, baudmode, {pace,} [outdata]*/
 /*        SEROUT dpin\fpin, baudmode, {timeout, tlabel,} [outdata]*/
 {
@@ -5186,7 +4900,7 @@ TErrorCode CompileSerout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileShiftin(void)
+TErrorCode tokenizer::CompileShiftin(void)
 /*Syntax: SHIFTIN dpin, cpin, mode, [variable{\bits},...]*/
 {
   TErrorCode    Result;
@@ -5228,7 +4942,7 @@ TErrorCode CompileShiftin(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileShiftout(void)
+TErrorCode tokenizer::CompileShiftout(void)
 /*Syntax: SHIFTOUT dpin, cpin, mode, [value{\bits},...]*/
 {
   TErrorCode    Result;
@@ -5268,7 +4982,7 @@ TErrorCode CompileShiftout(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileSleep(void)
+TErrorCode tokenizer::CompileSleep(void)
 /*Syntax: SLEEP period*/
 {
   TErrorCode    Result;
@@ -5282,7 +4996,7 @@ TErrorCode CompileSleep(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileStop(void)
+TErrorCode tokenizer::CompileStop(void)
 /*Syntax: STOP*/
 {
   TErrorCode  Result;
@@ -5293,7 +5007,7 @@ TErrorCode CompileStop(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileStore(void)
+TErrorCode tokenizer::CompileStore(void)
 /*Syntax: STORE slotnumber*/
 {
   TErrorCode  Result;
@@ -5306,7 +5020,7 @@ TErrorCode CompileStore(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileToggle(void)
+TErrorCode tokenizer::CompileToggle(void)
 /*Syntax: TOGGLE pin*/
 {
   TErrorCode    Result;
@@ -5319,7 +5033,7 @@ TErrorCode CompileToggle(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileWrite(void)
+TErrorCode tokenizer::CompileWrite(void)
 /*Syntax: WRITE location, {WORD} value {,{WORD} value...}*/
 {
   TElementList  Element;
@@ -5389,7 +5103,7 @@ TErrorCode CompileWrite(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileXout(void)
+TErrorCode tokenizer::CompileXout(void)
 /*Syntax: XOUT mpin, zpin, [house\keyorcommand{\cycles},...]*/
 {
   TErrorCode    Result;
@@ -5434,7 +5148,7 @@ TErrorCode CompileXout(void)
 /*------------------------------ Compiler Routines -----------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetValue(byte ExpNumber, bool PinIsConstant)
+TErrorCode tokenizer::GetValue(byte ExpNumber, bool PinIsConstant)
 /*Get value into Expression 1 to 3*/
 {
   TErrorCode    Result;
@@ -5446,7 +5160,7 @@ TErrorCode GetValue(byte ExpNumber, bool PinIsConstant)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetRead(byte ExpNumber)
+TErrorCode tokenizer::GetRead(byte ExpNumber)
 /*Get read into Expression 1 to 3*/
 {
   TErrorCode    Result;
@@ -5458,7 +5172,7 @@ TErrorCode GetRead(byte ExpNumber)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetWrite(byte ExpNumber)
+TErrorCode tokenizer::GetWrite(byte ExpNumber)
 /*Get write into Expression 1 to 3*/
 {
   TErrorCode  Result;
@@ -5470,7 +5184,7 @@ TErrorCode GetWrite(byte ExpNumber)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetValueEnterExpression(bool Enter1Before, bool PinIsConstant)
+TErrorCode tokenizer::GetValueEnterExpression(bool Enter1Before, bool PinIsConstant)
 /*Get value and enter expression.  If Enter1Before is True, a 1 is entered preceeding
 the expression*/
 {
@@ -5483,7 +5197,7 @@ the expression*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetWriteEnterExpression(void)
+TErrorCode tokenizer::GetWriteEnterExpression(void)
 /*Get write and enter expression followed by 0.*/
 {
   TErrorCode    Result;
@@ -5496,7 +5210,7 @@ TErrorCode GetWriteEnterExpression(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterOperator(TOperatorCode Operator)
+TErrorCode tokenizer::EnterOperator(TOperatorCode Operator)
 /*Enter 1 followed by 6-bit operator code*/
 {
   TErrorCode    Result;
@@ -5508,7 +5222,7 @@ TErrorCode EnterOperator(TOperatorCode Operator)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetEnd(bool *Result)
+TErrorCode tokenizer::GetEnd(bool *Result)
 /*Verify next element is an End of Line (or colon).  Returns False in Result if Hard End (End of Line),
   returns True in Result if Soft End (colon).*/
 {
@@ -5522,7 +5236,7 @@ TErrorCode GetEnd(bool *Result)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetLeft(void)
+TErrorCode tokenizer::GetLeft(void)
 /*Verify next element is a '('*/
 {
   TElementList  Element;
@@ -5534,7 +5248,7 @@ TErrorCode GetLeft(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetRight(void)
+TErrorCode tokenizer::GetRight(void)
 /*Verify next element is a ')'*/
 {
   TElementList  Element;
@@ -5546,7 +5260,7 @@ TErrorCode GetRight(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetLeftBracket(void)
+TErrorCode tokenizer::GetLeftBracket(void)
 /*Verify next element is a '['*/
 {
   TElementList  Element;
@@ -5558,7 +5272,7 @@ TErrorCode GetLeftBracket(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetRightBracket(void)
+TErrorCode tokenizer::GetRightBracket(void)
 /*Verify next element is a ']'*/
 {
   TElementList  Element;
@@ -5570,7 +5284,7 @@ TErrorCode GetRightBracket(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetEqual(void)
+TErrorCode tokenizer::GetEqual(void)
 /*Verify next element is an equal sign '='*/
 {
   TElementList  Element;
@@ -5582,7 +5296,7 @@ TErrorCode GetEqual(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetTO(void)
+TErrorCode tokenizer::GetTO(void)
 /*Verify next element is 'TO'*/
 {
   TElementList  Element;
@@ -5594,7 +5308,7 @@ TErrorCode GetTO(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetComma(void)
+TErrorCode tokenizer::GetComma(void)
 /*Verify next element is a comma ','*/
 {
   TElementList  Element;
@@ -5606,7 +5320,7 @@ TErrorCode GetComma(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetQuestion(void)
+TErrorCode tokenizer::GetQuestion(void)
 /*Get and verify question*/
 {
   TElementList  Element;
@@ -5618,7 +5332,7 @@ TErrorCode GetQuestion(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetBackslash(void)
+TErrorCode tokenizer::GetBackslash(void)
 /*Get and verify backslash*/
 {
   TElementList  Element;
@@ -5630,7 +5344,7 @@ TErrorCode GetBackslash(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CopySymbol(void)
+TErrorCode tokenizer::CopySymbol(void)
 /*Copy Symbol to Symbol2 and check Symbol Table for space*/
 {
   Symbol2 = Symbol;
@@ -5640,7 +5354,7 @@ TErrorCode CopySymbol(void)
 
 /*------------------------------------------------------------------------------*/
 
-bool CheckQuestion(void)
+bool tokenizer::CheckQuestion(void)
 /*Check for question mark '?'.  Returns True if found and skipped, False if not found
 and not skipped*/
 {
@@ -5653,7 +5367,7 @@ and not skipped*/
 
 /*------------------------------------------------------------------------------*/
 
-bool CheckBackslash(void)
+bool tokenizer::CheckBackslash(void)
 /*Check for backslash '\'.  Returns True if found and skipped, False if not found
 and not skipped*/
 {
@@ -5666,7 +5380,7 @@ and not skipped*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetCommaOrBracket(bool *FoundBracket)
+TErrorCode tokenizer::GetCommaOrBracket(bool *FoundBracket)
 /*Get comma ',' or right bracket ']' and enter 1 or 0 into EEPROM.  Returns False
 if comma found (1 entered) or True if bracket found (0 entered)*/
 {
@@ -5690,7 +5404,7 @@ if comma found (1 entered) or True if bracket found (0 entered)*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetCommaOrEnd(bool *EndFound)
+TErrorCode tokenizer::GetCommaOrEnd(bool *EndFound)
 /*Get comma ',' or end ':' (or eol) and enter 1 or 0 into EEPROM.  Returns False
 if comma found (1 entered) or True if end found (0 entered)*/
 {
@@ -5715,7 +5429,7 @@ if comma found (1 entered) or True if end found (0 entered)*/
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetByteVariable(TElementList *Element)
+TErrorCode tokenizer::GetByteVariable(TElementList *Element)
 /*Get and verify a byte variable*/
 {
   GetElement(Element);                     /*String, get byte variable*/
@@ -5726,7 +5440,7 @@ TErrorCode GetByteVariable(TElementList *Element)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetUndefinedSymbol(void)
+TErrorCode tokenizer::GetUndefinedSymbol(void)
 /*Retrieve undefined symbol and store in Symbol2*/
 {
   TErrorCode    Result;
@@ -5740,7 +5454,7 @@ TErrorCode GetUndefinedSymbol(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode Enter0Code(TInstructionCode Code)
+TErrorCode tokenizer::Enter0Code(TInstructionCode Code)
 /*Enter 0 and 6-bit instruction code into EEPROM*/
 {
   TErrorCode  Result;
@@ -5751,7 +5465,7 @@ TErrorCode Enter0Code(TInstructionCode Code)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileInputSequence(void)
+TErrorCode tokenizer::CompileInputSequence(void)
 /*Compile input sequence for instructions like SERIN*/
 {
   typedef enum TInputState {osCheck, osSPString, osString, osSkip, osWaitString, osWait, osNumber, osNext, osDone} TInputState;
@@ -5897,7 +5611,7 @@ TErrorCode CompileInputSequence(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterChr(char Character)
+TErrorCode tokenizer::EnterChr(char Character)
 /*Enter Character Constant followed by a 0 and a 1*/
 {
   TErrorCode      Result;
@@ -5910,7 +5624,7 @@ TErrorCode EnterChr(char Character)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterText(bool ASCFlag)
+TErrorCode tokenizer::EnterText(bool ASCFlag)
 /*Enter Expression Text for CompileOutputSequence*/
 {
   TErrorCode      Result;
@@ -5941,7 +5655,7 @@ TErrorCode EnterText(bool ASCFlag)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CompileOutputSequence(void)
+TErrorCode tokenizer::CompileOutputSequence(void)
 /*Compile output sequence for instructions like SEROUT and DEBUG*/
 {
   typedef enum TOutputState {osCheck, osASCII, osASCII2, osString, osRepeat, osNumber, osQuestion, osNext, osDone} TOutputState;
@@ -6073,7 +5787,7 @@ TErrorCode CompileOutputSequence(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode GetAddressEnter(void)
+TErrorCode tokenizer::GetAddressEnter(void)
 /*Get address and enter into EEPROM.  If undefined, store it in the PatchList*/
 {
   TErrorCode    Result;
@@ -6098,7 +5812,7 @@ TErrorCode GetAddressEnter(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterAddress(word Address)
+TErrorCode tokenizer::EnterAddress(word Address)
 /*Insert Address into EEPROM (14-bit address)*/
 {
   TErrorCode  Result;
@@ -6110,7 +5824,7 @@ TErrorCode EnterAddress(word Address)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterConstant(word Constant, bool Enter1Before)
+TErrorCode tokenizer::EnterConstant(word Constant, bool Enter1Before)
 /*Enter Constant into EEPROM preceded by 1 if Enter1Before is true.*/
 {
   TErrorCode      Result;
@@ -6126,7 +5840,7 @@ TErrorCode EnterConstant(word Constant, bool Enter1Before)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CountGosubs(void)
+TErrorCode tokenizer::CountGosubs(void)
 /*Count GOSUB instructions.  This routine only counts the occurances of GOSUB, it does not validate
  the instruction in any way other than to limit the maximum number of GOSUBS to 255*/
 {
@@ -6147,7 +5861,7 @@ TErrorCode CountGosubs(void)
 
 /*------------------------------------------------------------------------------*/
 
-int Lowest(int Value1, int Value2)
+int tokenizer::Lowest(int Value1, int Value2)
 /*This function returns the lowest of the two values*/
 {
   if (Value1 < Value2) return(Value1); else return(Value2);
@@ -6155,7 +5869,7 @@ int Lowest(int Value1, int Value2)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode NestingError(void)
+TErrorCode tokenizer::NestingError(void)
 /*Display the appropriate error message when the end of a code-block is found before the end of a deeper nested block*/
 {
   switch (NestingStack[NestingStackIdx-1].NestType)
@@ -6174,7 +5888,7 @@ TErrorCode NestingError(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode CCNestingError(void)
+TErrorCode tokenizer::CCNestingError(void)
 /*Display the appropriate error message when the end of a conditional-compile code-block is found before the end
   of a deeper nested block*/
 {
@@ -6190,7 +5904,7 @@ TErrorCode CCNestingError(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode Error(TErrorCode ErrorID)
+TErrorCode tokenizer::Error(TErrorCode ErrorID)
 /*Set tzModuleRec to error string and raise exception.  This routine copies the error string to the upper tzModuleRec->PacketBuffer,
  then points the tzModuleRec->Error pointer there.*/
 {
@@ -6201,7 +5915,7 @@ TErrorCode Error(TErrorCode ErrorID)
 
 /*------------------------------------------------------------------------------*/
 
-bool InBaseRange(char C, TBase Base)
+bool tokenizer::InBaseRange(char C, TBase Base)
 { /*Determine if character (C) is in the base-range of base.  Returns True if in base-range, False otherwise.
     Automatically takes care of lower case characters.
     Assumes the ASCII character set.*/
@@ -6221,7 +5935,7 @@ bool InBaseRange(char C, TBase Base)
 /*------------------------------- Object Engine --------------------------------*/
 /*------------------------------------------------------------------------------*/
 
-TErrorCode EnterEEPROM(byte Bits, word Data)
+TErrorCode tokenizer::EnterEEPROM(byte Bits, word Data)
 /*Enter EEPROM program data (reversed addressing)*/
 /*Bits = # of bits to enter (1 to 16), Data = data to enter.  Note that EEPROMIdx is updated
 when this procedure exits.  This procedure will properly span data across the 8-bit boundaries
@@ -6254,7 +5968,7 @@ of the EEPROM buffer.*/
 
 /*------------------------------------------------------------------------------*/
 
-void EnterSrcTokRef(void)
+void tokenizer::EnterSrcTokRef(void)
 /*Enter new Source Code vs. Bit Token Cross Reference item.*/
 {
   TElementList  Element;
@@ -6272,7 +5986,7 @@ void EnterSrcTokRef(void)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PatchAddress(word SourceAddress)
+TErrorCode tokenizer::PatchAddress(word SourceAddress)
 /*Patch SourceAddress in EEPROM with current EEPROM address (EEPROMIdx).  EEPROMIdx is preserved.  Used to fill in address
  fields of GOTO, GOSUB, etc that referenced forward addresses (addresses not known at the time item was compiled)*/
 {
@@ -6288,7 +6002,7 @@ TErrorCode PatchAddress(word SourceAddress)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PatchSkipLabels(bool Exits)
+TErrorCode tokenizer::PatchSkipLabels(bool Exits)
 /*For the current nested code block, patch the SkipLabel (if Exits = False) or all the EXIT SkipLabels (if Exits = True)*/
 {
   int         Idx;
@@ -6316,7 +6030,7 @@ TErrorCode PatchSkipLabels(bool Exits)
 
 /*------------------------------------------------------------------------------*/
 
-TErrorCode PatchRemainingAddresses(void)
+TErrorCode tokenizer::PatchRemainingAddresses(void)
 {
   int           Idx;
   TElementList  Element;
@@ -6337,7 +6051,7 @@ TErrorCode PatchRemainingAddresses(void)
 
 /*------------------------------------------------------------------------------*/
 
-void PreparePackets(void)
+void tokenizer::PreparePackets(void)
 /*Prepare download packets*/
 {
   byte    Flags;

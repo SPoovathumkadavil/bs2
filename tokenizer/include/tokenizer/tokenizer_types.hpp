@@ -22,7 +22,7 @@
 /*                ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                          */
 /*************************************************************************************************************************************************/
 
-
+#pragma once
 
 #if defined(LINUX) || defined(__APPLE_CC__) // For some reason, limits.h is not auto-included in Linux or Macintosh
   #include <limits.h>
