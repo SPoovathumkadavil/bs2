@@ -1,3 +1,6 @@
 [submodule "tokenizer"]
 	path = tokenizer
 	url = https://github.com/SPoovathumkadavil/bs2tokenizer
+[submodule "stampbc"]
+	path = stampbc
+	url = https://github.com/SPoovathumkadavil/bs2stampbc
