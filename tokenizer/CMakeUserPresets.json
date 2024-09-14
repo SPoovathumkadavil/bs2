@@ -11,7 +11,8 @@
       "hidden": true,
       "inherits": ["dev-mode", "clang-tidy", "cppcheck"],
       "cacheVariables": {
-        "BUILD_MCSS_DOCS": "ON"
+        "BUILD_MCSS_DOCS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
@@ -19,8 +20,7 @@
       "binaryDir": "${sourceDir}/build/dev-linux",
       "inherits": ["dev-common", "ci-linux"],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {

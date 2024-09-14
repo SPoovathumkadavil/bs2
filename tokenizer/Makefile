@@ -16,7 +16,7 @@ LIB_DIR = library
 CONFIG_DIR = config
 
 # change to ON for building shared libs
-SHARED = OFF
+SHARED = ON
 
 .PHONY: build
 build: clean
@@ -34,7 +34,7 @@ build: clean
 	cmake --build build
 
 .PHONY: dev
-dev: 
+dev:
 	echo "building dev"
 	cmake --preset=dev
 	cmake --build --preset=dev
@@ -109,8 +109,8 @@ help:
 
 TARGET_LIB = $(HOME)/dev/.library
 TARGET_CONF = $(HOME)/dev/.config
-TARGET_BIN = $(HOME)/dev/.bin 
-TARGET_SCRIPTS = $(HOME)/dev/.scripts 
+TARGET_BIN = $(HOME)/dev/.bin
+TARGET_SCRIPTS = $(HOME)/dev/.scripts
 TARGET_WORK = $(HOME)/dev/workspace
 
 .PHONY: loc
